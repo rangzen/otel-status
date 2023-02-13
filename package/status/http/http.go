@@ -7,7 +7,7 @@ import (
 	"io"
 	"log"
 	nethttp "net/http"
-	"net/url"
+	neturl "net/url"
 	"strconv"
 	"time"
 
@@ -47,14 +47,14 @@ func (h HTTP) State(tracer trace.Tracer) error {
 		)
 	}(start)
 
-	url, err := url.Parse(h.Site)
+	url, err := neturl.Parse(h.Site)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("parsing url: %w", err)
 	}
 
-	req, err := nethttp.NewRequest(h.Method, url.String(), nil)
+	req, err := nethttp.NewRequest(h.Method, url.String(), nethttp.NoBody)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
