@@ -1,0 +1,81 @@
+version: '3.9'
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+networks:
+  default:
+    name: otel-status-local
+    driver: bridge
+
+services:
+  # Service to test HTTP requests.
+  service-http:
+    container_name: service-http
+    build:
+      context: ./service-http
+      target: runtime
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+
+  # ClickHouse server, backend for Uptrace.
+  clickhouse:
+    image: clickhouse/clickhouse-server:22.7
+    container_name: clickhouse
+    environment:
+      CLICKHOUSE_DB: uptrace
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'localhost:8123/ping']
+      interval: 1s
+      timeout: 1s
+      retries: 30
+    volumes:
+      - ch_data:/var/lib/clickhouse
+    ports:
+      - '8123:8123'
+      - '9000:9000'
+
+  # OpenTelemetry Collector, link between OpenTelemetry SDKs and Uptrace.
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.61.0
+    container_name: otel-col
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+    command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-config-extras.yml" ]
+    volumes:
+      - ./otelcol-config.yml:/etc/otelcol-config.yml
+      - ./otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
+    ports:
+      - "4317:4317"          # OTLP over gRPC receiver
+      - "4318:4318"     # OTLP over HTTP receiver
+    depends_on:
+      - uptrace
+    logging: *logging
+
+  # Uptrace server, GUI.
+  uptrace:
+    image: 'uptrace/uptrace:1.3.1'
+    #image: 'uptrace/uptrace-dev:latest'
+    container_name: uptrace
+    volumes:
+      - uptrace_data:/var/lib/uptrace
+      - ./uptrace.yml:/etc/uptrace/uptrace.yml
+    #environment:
+    #  - DEBUG=2
+    ports:
+      - '14317:14317'
+      - '14318:14318'
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+volumes:
+  uptrace_data:
+    driver: local
+  ch_data:
+    driver: local

@@ -1,0 +1,13 @@
+localhost:
+  http_8080:
+    method: "GET"
+    url: "http://localhost:8080"
+    every: 4s
+  http_8081:
+    method: "HEAD"
+    url: "http://localhost:8081"
+    every: 4s
+  http_8082:
+    method: "HEAD"
+    url: "http://localhost:8082"
+    every: 4s

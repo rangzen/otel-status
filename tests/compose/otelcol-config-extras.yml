@@ -1,0 +1,35 @@
+# extra settings to be merged into OpenTelemetry Collector configuration
+# do not delete this file
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp/uptrace:
+    endpoint: "uptrace:14317"
+    #endpoint: "otlp.uptrace.dev:4317"
+    tls:
+      insecure: true
+    headers:
+      uptrace-dsn: "http://project2_secret_token@localhost:14317/2"
+  logging:
+
+processors:
+  batch:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, otlp/uptrace]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, otlp/uptrace]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, otlp/uptrace]
