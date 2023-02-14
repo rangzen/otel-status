@@ -18,7 +18,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const name = "http"
+const pluginName = "http"
 
 // HTTP is the main structure to use HTTP status.
 type HTTP struct {
@@ -75,8 +75,9 @@ func (h HTTP) State(tracer trace.Tracer) error {
 		}
 	}(res.Body)
 
-	log.Printf("%s: %q with status %q", name, url.Host, strconv.Itoa(res.StatusCode))
+	log.Printf("%s: %q with status %q", pluginName, url.Host, strconv.Itoa(res.StatusCode))
 	span.SetAttributes(
+		attribute.String(status.OtelStatusPluginName, pluginName),
 		semconv.HTTPMethodKey.String("GET"),
 		semconv.HTTPStatusCodeKey.Int(res.StatusCode),
 		semconv.HTTPFlavorKey.String("1.1"),

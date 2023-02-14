@@ -7,6 +7,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	// OtelStatusPluginName is the key for the plugin name.
+	OtelStatusPluginName = "otel.status.plugin.name"
+)
+
 // Stater is the interface that wraps the Config methods.
 type Stater interface {
 	Config() Config
