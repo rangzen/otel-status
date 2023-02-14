@@ -4,6 +4,7 @@ package status
 import (
 	"strings"
 
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -15,7 +16,7 @@ const (
 // Stater is the interface that wraps the Config methods.
 type Stater interface {
 	Config() Config
-	State(tracer trace.Tracer) error
+	State(tracer trace.Tracer, meter metric.Meter) error
 }
 
 // Config is the main structure to use status.

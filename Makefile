@@ -13,7 +13,9 @@ test-run-compose:
 .PHONY: test-run
 test-run:
 	export OTEL_EXPORTER_OTLP_ENDPOINT=grpc://localhost:14317 && \
+	export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=grpc://localhost:14317 && \
 	export OTEL_EXPORTER_OTLP_INSECURE=true && \
 	export OTEL_EXPORTER_OTLP_TRACES_HEADERS=UPTRACE-DSN=http://project2_secret_token@localhost:14317/2 && \
+	export OTEL_EXPORTER_OTLP_METRICS_HEADERS=UPTRACE-DSN=http://project2_secret_token@localhost:14317/2 && \
 	export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=dev && \
 	go run tests/compose/cmd/otel-status.go

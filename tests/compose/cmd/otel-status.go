@@ -14,19 +14,28 @@ import (
 	"github.com/rangzen/otel-status/package/status"
 	statushttp "github.com/rangzen/otel-status/package/status/http"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
 var tracer = otel.Tracer("github.com/rangzen/otel-status")
+var meter = global.MeterProvider().Meter("github.com/rangzen/otel-status")
 
 func main() {
 	// Prepare connexion to Open Telemetry Traces.
 	if err := initTracer(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Prepare connexion to Open Telemetry Metrics.
+	if err := initMeter(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -73,9 +82,9 @@ func main() {
 	for _, stater := range staters {
 		var err error
 		if stater.Config().IsDuration() {
-			_, err = scheduler.Every(stater.Config().CronDuration()).Do(stater.State, tracer)
+			_, err = scheduler.Every(stater.Config().CronDuration()).Do(stater.State, tracer, meter)
 		} else {
-			_, err = scheduler.Cron(stater.Config().CronExp()).Do(stater.State, tracer)
+			_, err = scheduler.Cron(stater.Config().CronExp()).Do(stater.State, tracer, meter)
 		}
 		if err != nil {
 			log.Fatal(fmt.Errorf("scheduling %s: %w", stater.Config().Name, err))
@@ -114,6 +123,37 @@ func initTracer() error {
 
 	otel.SetTracerProvider(tracerProvider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return nil
+}
+
+// initMeter prepares connexion to Open Telemetry Metrics.
+// All the configuration is done via environment variables.
+func initMeter() error {
+	exporter, err := otlpmetricgrpc.New(
+		context.Background(),
+	)
+	if err != nil {
+		return fmt.Errorf("creating Open Telemetry metrics exporter: %w", err)
+	}
+
+	resources, err := resource.New(
+		context.Background(),
+		resource.WithHost(),
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String("otel-status"),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("creating Open Telemetry metrics resources: %w", err)
+	}
+
+	meterProvider := metric.NewMeterProvider(
+		metric.WithReader(metric.NewPeriodicReader(exporter)),
+		metric.WithResource(resources),
+	)
+
+	global.SetMeterProvider(meterProvider)
 
 	return nil
 }

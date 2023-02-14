@@ -14,6 +14,8 @@ import (
 	"github.com/rangzen/otel-status/package/status"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -27,6 +29,11 @@ type HTTP struct {
 	Site   string
 }
 
+const (
+	otelStatusHTTPDuration = "otel.status.http.duration"
+	otelStatusHTTPName     = "otel.status.http.name"
+)
+
 // Config returns the status.Config of the HTTP status.
 func (h HTTP) Config() status.Config {
 	return h.SC
@@ -34,16 +41,33 @@ func (h HTTP) Config() status.Config {
 
 // State do the traces about the HTTP status.
 // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md
-func (h HTTP) State(tracer trace.Tracer) error {
+func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
+	ctx := context.Background()
 	start := time.Now()
-	_, span := tracer.Start(context.Background(), "GET "+h.Site,
+	_, span := tracer.Start(ctx, "GET "+h.Site,
 		trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
 
 	// Defers use LIFO, so the defer that ends the span should be called first.
 	defer func(Start time.Time) {
+		// Span
+		elapsedTime := time.Since(start).Milliseconds()
 		span.SetAttributes(
-			attribute.Int64("duration", time.Since(start).Milliseconds()),
+			attribute.Int64("duration", elapsedTime),
+		)
+
+		// Metric
+		opHistogram, err := meter.Int64Histogram(
+			otelStatusHTTPDuration,
+			instrument.WithUnit("ms"),
+			instrument.WithDescription("Duration of the HTTP request"),
+		)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		opHistogram.Record(ctx, elapsedTime,
+			attribute.String(otelStatusHTTPName, h.SC.Name),
 		)
 	}(start)
 
