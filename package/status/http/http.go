@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	nethttp "net/http"
 	neturl "net/url"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/exp/slog"
 )
 
 const pluginName = "http"
@@ -108,7 +108,7 @@ func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 		}
 	}(res.Body)
 
-	log.Printf("%s: %q with status %q", pluginName, url.Host, strconv.Itoa(res.StatusCode))
+	slog.Info("status", slog.String("plugin", pluginName), slog.String("url", url.String()), slog.String("status", strconv.Itoa(res.StatusCode)))
 	span.SetAttributes(
 		attribute.String(status.OtelStatusPluginName, pluginName),
 		semconv.HTTPMethodKey.String("GET"),

@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -24,40 +23,48 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv/v1.17.0"
+	"golang.org/x/exp/slog"
 )
 
 var tracer = otel.Tracer("github.com/rangzen/otel-status")
 var meter = global.MeterProvider().Meter("github.com/rangzen/otel-status")
 
 func main() {
+	slog.Info("starting otel-status")
+
 	// Load configuration file.
 	configPath := flag.String("config", "", "Path to the configuration file.")
 	flag.Parse()
 
 	if *configPath == "" {
-		log.Fatal("You must provide a configuration file.")
+		slog.Info("You must provide a configuration file.")
+		os.Exit(1)
 	}
 
+	slog.Info("loading configuration", "path", *configPath)
 	conf, err := config.FromFile(*configPath)
 	if err != nil {
-		log.Fatal(fmt.Errorf("loading configuration file: %w", err))
+		slog.Error("loading configuration", err, "path", *configPath)
+		os.Exit(1)
 	}
 
 	// Prepare connexion to Open Telemetry Traces.
 	if err = initTracer(); err != nil {
-		log.Fatal(err)
+		slog.Error("initializing tracer", err)
+		os.Exit(1)
 	}
 
 	// Prepare connexion to Open Telemetry Metrics.
 	if err = initMeter(); err != nil {
-		log.Fatal(err)
+		slog.Error("initializing meter", err)
+		os.Exit(1)
 	}
 
 	// Print all OTEL_ environment variables.
-	log.Println("Open Telemetry environment variables:")
 	for _, e := range os.Environ() {
 		if strings.HasPrefix(e, "OTEL_") {
-			log.Println(e)
+			split := strings.SplitN(e, "=", 2)
+			slog.Info("Open Telemetry environment variable", "name", split[0], "value", split[1])
 		}
 	}
 
@@ -73,17 +80,18 @@ func main() {
 			Method: s.Method,
 			URL:    s.URL,
 		}
-		log.Printf("Scheduling %q at %q", stater.Config().Name, stater.Config().Cron)
+		slog.Info("scheduling", "type", "http", "name", stater.Config().Name, "cron", stater.Config().Cron)
 		if stater.Config().IsDuration() {
 			_, err = scheduler.Every(stater.Config().CronDuration()).Do(stater.State, tracer, meter)
 		} else {
 			_, err = scheduler.Cron(stater.Config().CronExp()).Do(stater.State, tracer, meter)
 		}
 		if err != nil {
-			log.Fatal(fmt.Errorf("scheduling %s: %w", stater.Config().Name, err))
+			slog.Error("scheduling", err, "name", stater.Config().Name)
+			os.Exit(1)
 		}
 	}
-	log.Println("Status scheduled:", scheduler.Len())
+	slog.Info("scheduled", "count", scheduler.Len())
 	scheduler.StartBlocking()
 }
 
