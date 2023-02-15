@@ -1,6 +1,6 @@
 module github.com/rangzen/otel-status
 
-go 1.20
+go 1.18
 
 require (
 	github.com/go-co-op/gocron v1.18.0
