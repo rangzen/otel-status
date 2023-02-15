@@ -38,7 +38,7 @@ func main() {
 	flag.Parse()
 
 	if *configPath == "" {
-		slog.Info("You must provide a configuration file.")
+		slog.Error("You must provide a configuration file. Try -h for help.", nil)
 		os.Exit(1)
 	}
 
