@@ -6,12 +6,12 @@ lint:
 test-force-rebuild-service-http:
 	cd tests/compose && docker compose build --no-cache service-http
 
-.PHONY: test-run-compose
-test-run-compose:
+.PHONY: test-compose-up
+test-compose-up:
 	cd tests/compose && docker compose up -d
 
-.PHONY: test-run
-test-run:
+.PHONY: test-run-cmd
+test-run-cmd:
 	export OTEL_EXPORTER_OTLP_ENDPOINT=grpc://localhost:14317 && \
 	export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=grpc://localhost:14317 && \
 	export OTEL_EXPORTER_OTLP_INSECURE=true && \
