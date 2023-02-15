@@ -1,13 +1,32 @@
-localhost:
-  http_8080:
-    method: "GET"
-    url: "http://localhost:8080"
-    every: 4s
-  http_8081:
-    method: "HEAD"
-    url: "http://localhost:8081"
-    every: 4s
-  http_8082:
-    method: "HEAD"
-    url: "http://localhost:8082"
-    every: 4s
+states:
+  http:
+    - name: HTTP GET localhost:8080 (HTML)
+      description: Normal HTML page.
+      cron: "@4s"
+      method: GET
+      url: http://localhost:8080
+    - name: HTTP HEAD on localhost:8081 (slow, JSON)
+      description: Always returns 200, but takes 1 second.
+      cron: "@7s"
+      method: HEAD
+      url: http://localhost:8081
+    - name: HTTP HEAD on localhost:8082 (401)
+      description: Always returns 401.
+      cron: "*/2 * * * *"
+      method: HEAD
+      url: http://localhost:8082
+    - name: Google FR
+      description: Google France.
+      cron: "@5m"
+      method: GET
+      url: https://www.google.fr
+    - name: Google US
+      description: Google USA.
+      cron: "@5m"
+      method: GET
+      url: https://www.google.com
+    - name: Uptrace
+      description: Uptrace.
+      cron: "@5m"
+      method: GET
+      url: https://uptrace.dev

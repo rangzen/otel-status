@@ -22,17 +22,26 @@ import (
 
 const pluginName = "http"
 
-// HTTP is the main structure to use HTTP status.
-type HTTP struct {
-	SC     status.Config
-	Method string
-	Site   string
-}
-
 const (
 	otelStatusHTTPDuration = "otel.status.http.duration"
 	otelStatusHTTPName     = "otel.status.http.name"
 )
+
+// Config is the configuration for an HTTP status.
+type Config struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Cron        string `yaml:"cron" default:"@10m"`
+	Method      string `yaml:"method" default:"GET"`
+	URL         string `yaml:"url"`
+}
+
+// HTTP is the main structure to use HTTP status.
+type HTTP struct {
+	SC     status.Config
+	Method string
+	URL    string
+}
 
 // Config returns the status.Config of the HTTP status.
 func (h HTTP) Config() status.Config {
@@ -44,7 +53,7 @@ func (h HTTP) Config() status.Config {
 func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	ctx := context.Background()
 	start := time.Now()
-	_, span := tracer.Start(ctx, "GET "+h.Site,
+	_, span := tracer.Start(ctx, "GET "+h.URL,
 		trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
 
@@ -71,7 +80,7 @@ func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 		)
 	}(start)
 
-	url, err := neturl.Parse(h.Site)
+	url, err := neturl.Parse(h.URL)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

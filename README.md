@@ -31,8 +31,8 @@ See https://opentelemetry.io/docs/concepts/what-is-opentelemetry/#what-opentelem
 
 We try to limit dependencies to the bare minimum:
 * [Open Telemetry](https://opentelemetry.io/) for tracing and metrics (obviously...)
-* Cron scheduler to run the checks (https://github.com/go-co-op/gocron)
-* YAML for configuration
+* [Cron scheduler](https://github.com/go-co-op/gocron) to run the checks
+* [YAML](https://github.com/go-yaml/yaml) for configuration
 
 ## Tools
 

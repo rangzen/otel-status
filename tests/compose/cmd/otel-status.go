@@ -3,16 +3,17 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/go-co-op/gocron"
+	"github.com/rangzen/otel-status/package/config"
 	"github.com/rangzen/otel-status/package/status"
-	statushttp "github.com/rangzen/otel-status/package/status/http"
+	"github.com/rangzen/otel-status/package/status/http"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -29,58 +30,50 @@ var tracer = otel.Tracer("github.com/rangzen/otel-status")
 var meter = global.MeterProvider().Meter("github.com/rangzen/otel-status")
 
 func main() {
+	// Load configuration file.
+	configPath := flag.String("config", "", "Path to the configuration file.")
+	flag.Parse()
+
+	if *configPath == "" {
+		log.Fatal("You must provide a configuration file.")
+	}
+
+	conf, err := config.FromFile(*configPath)
+	if err != nil {
+		log.Fatal(fmt.Errorf("loading configuration file: %w", err))
+	}
+
 	// Prepare connexion to Open Telemetry Traces.
-	if err := initTracer(); err != nil {
+	if err = initTracer(); err != nil {
 		log.Fatal(err)
 	}
 
 	// Prepare connexion to Open Telemetry Metrics.
-	if err := initMeter(); err != nil {
+	if err = initMeter(); err != nil {
 		log.Fatal(err)
 	}
 
 	// Print all OTEL_ environment variables.
+	log.Println("Open Telemetry environment variables:")
 	for _, e := range os.Environ() {
 		if strings.HasPrefix(e, "OTEL_") {
-			log.Printf("%s\n", e)
+			log.Println(e)
 		}
 	}
 
-	// TODO Get these from configuration.
-	var staters = []status.Stater{
-		statushttp.HTTP{
+	// Cron all status on local time zone.
+	scheduler := gocron.NewScheduler(time.Local)
+	for _, s := range conf.States.HTTP {
+		stater := http.HTTP{
 			SC: status.Config{
-				Name:        "HTTP GET on localhost:8080 (HTML)",
-				Description: "Check if the HTTP GET is working.",
-				Cron:        "@4s",
+				Name:        s.Name,
+				Description: s.Description,
+				Cron:        s.Cron,
 			},
-			Method: http.MethodGet,
-			Site:   "http://localhost:8080",
-		},
-		statushttp.HTTP{
-			SC: status.Config{
-				Name:        "HTTP HEAD on localhost:8081 (slow, JSON)",
-				Description: "Check if the HTTP HEAD is working.",
-				Cron:        "@7s",
-			},
-			Method: http.MethodHead,
-			Site:   "http://localhost:8081",
-		},
-		statushttp.HTTP{
-			SC: status.Config{
-				Name:        "HTTP HEAD on localhost:8082 (401)",
-				Description: "Check if the HTTP HEAD is working.",
-				Cron:        "*/2 * * * *",
-			},
-			Method: http.MethodHead,
-			Site:   "http://localhost:8082",
-		},
-	}
-
-	// Cron all status.
-	scheduler := gocron.NewScheduler(time.UTC)
-	for _, stater := range staters {
-		var err error
+			Method: s.Method,
+			URL:    s.URL,
+		}
+		log.Printf("Scheduling %q at %q", stater.Config().Name, stater.Config().Cron)
 		if stater.Config().IsDuration() {
 			_, err = scheduler.Every(stater.Config().CronDuration()).Do(stater.State, tracer, meter)
 		} else {
@@ -90,7 +83,7 @@ func main() {
 			log.Fatal(fmt.Errorf("scheduling %s: %w", stater.Config().Name, err))
 		}
 	}
-	log.Println(scheduler.Len(), "status scheduled.")
+	log.Println("Status scheduled:", scheduler.Len())
 	scheduler.StartBlocking()
 }
 

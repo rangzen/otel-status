@@ -32,6 +32,7 @@ func (s Config) CronExp() string {
 }
 
 // IsDuration returns true if the cron is of type time.Duration.
+// The cron is of type time.Duration if it starts with @.
 func (s Config) IsDuration() bool {
 	return strings.HasPrefix(s.Cron, "@")
 }
