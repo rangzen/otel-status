@@ -26,8 +26,9 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var tracer = otel.Tracer("github.com/rangzen/otel-status")
-var meter = global.MeterProvider().Meter("github.com/rangzen/otel-status")
+const (
+	instrumentName = "github.com/rangzen/otel-status"
+)
 
 func main() {
 	slog.Info("starting otel-status")
@@ -69,6 +70,8 @@ func main() {
 	}
 
 	// Cron all status on local time zone.
+	var tracer = otel.Tracer(instrumentName)
+	var meter = global.MeterProvider().Meter(instrumentName)
 	scheduler := gocron.NewScheduler(time.Local)
 	for _, s := range conf.States.HTTP {
 		stater := http.HTTP{
