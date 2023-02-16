@@ -6,19 +6,26 @@
 --------------------------------
 ```
 
-`otel-status` is a utility that verifies the status of various endpoints and
-returns results with [Open Telemetry](https://opentelemetry.io/) traces and metrics.
+`otel-status` is a Go library that allows you to create tools
+that check various endpoints using [Open Telemetry](https://opentelemetry.io/).
 
-This tool enables you to monitor the status of your endpoints in real-time,
-with comprehensive tracing and metrics data
-to give you an understanding of the performance of your system.
+These tools allow you to monitor the status of your endpoints in real-time,
+with comprehensive traces and metrics data
+to hepl you understand the performance of your system.
+
+See [cmd/otel-status](cmd/otel-status) for an example of a tool that uses this library.
 
 <!-- TOC -->
 * [Open Telemetry Status](#open-telemetry-status)
   * [Information](#information)
+  * [CLI tool](#cli-tool)
+    * [Installation](#installation)
+    * [Usage](#usage)
   * [Tools](#tools)
     * [Revive](#revive)
+  * [Related projects](#related-projects)
   * [Contributing](#contributing)
+  * [Versioning](#versioning)
 <!-- TOC -->
 
 ## Information
@@ -34,6 +41,22 @@ We try to limit dependencies to the bare minimum:
 * [Cron scheduler](https://github.com/go-co-op/gocron) to run the checks
 * [YAML](https://github.com/go-yaml/yaml) for configuration
 
+## CLI tool
+
+### Installation
+
+```shell
+go install github.com/rangzen/otel-status/cmd/otel-status@latest
+```
+
+### Usage
+
+```shell
+otel-status -c config.yaml
+```
+
+See [tests/compose/otel-status.yaml](tests/compose/otel-status.yaml) for an example of configuration file.
+
 ## Tools
 
 ### Revive
@@ -44,8 +67,18 @@ This project use the [default](https://github.com/mgechev/revive#default-configu
 
 See https://github.com/mgechev/revive#text-editors for more information on installation in IDEs.
 
+## Related projects
+
+* [Open Telemetry](https://opentelemetry.io/)
+* [HTTP Check Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/httpcheckreceiver)
+
 ## Contributing
 
 Please:
 * Check you code with revive before submitting a PR.
 * Use https://www.conventionalcommits.org for commit messages.
+
+## Versioning
+
+We use [SemVer](http://semver.org/) for versioning.
+For the versions available, see the [tags on this repository](https://github.com/rangzen/otel-status/tags). 
