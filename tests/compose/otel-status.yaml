@@ -15,6 +15,11 @@ states:
       cron: "*/2 * * * *"
       method: HEAD
       url: http://localhost:8082
+    - name: HTTP HEAD on localhost:8083 (200, 303, 401)
+      description: Switch at each call.
+      cron: "@1m"
+      method: HEAD
+      url: http://localhost:8083
     - name: Google FR
       description: Google France.
       cron: "@5m"

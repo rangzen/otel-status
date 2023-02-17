@@ -13,3 +13,7 @@ echo && echo
 echo " --- Testing HTTP with problem ---"
 curl --write-out '| CODE:%{http_code}' localhost:8082
 echo
+
+echo " --- Testing HTTP with different status ---"
+curl --write-out '| CODE:%{http_code}' localhost:8083
+echo
