@@ -83,14 +83,14 @@ func main() {
 			Method: s.Method,
 			URL:    s.URL,
 		}
-		slog.Info("scheduling", "type", "http", "name", stater.Config().Name, "cron", stater.Config().Cron)
+		slog.Info("scheduling", "plugin", http.PluginName, "name", stater.Config().Name, "cron", stater.Config().Cron)
 		if stater.Config().IsDuration() {
 			_, err = scheduler.Every(stater.Config().CronDuration()).Do(stater.State, tracer, meter)
 		} else {
 			_, err = scheduler.Cron(stater.Config().CronExp()).Do(stater.State, tracer, meter)
 		}
 		if err != nil {
-			slog.Error("scheduling", err, "name", stater.Config().Name)
+			slog.Error("scheduling", err, "plugin", http.PluginName, "name", stater.Config().Name)
 			os.Exit(1)
 		}
 	}
