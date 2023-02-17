@@ -35,3 +35,8 @@ states:
       cron: "@5m"
       method: HEAD
       url: https://uptrace.dev
+    - name: Don't exist
+      description: Non existing domain.
+      cron: "@5m"
+      method: HEAD
+      url: https://tralalala-tsouintsouin-les-ptites-boules---aliiiaaaaaa-prt.dev
