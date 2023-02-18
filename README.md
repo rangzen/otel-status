@@ -55,7 +55,7 @@ go install github.com/rangzen/otel-status/cmd/otel-status@latest
 otel-status -c config.yaml
 ```
 
-See [tests/compose/otel-status.yaml](tests/compose/otel-status.yaml) for an example of configuration file.
+See [tests/otel-status-compose/otel-status.yaml](tests/otel-status-compose/otel-status.yaml) for an example of configuration file.
 
 ## Tools
 

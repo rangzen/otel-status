@@ -10,7 +10,14 @@ test-force-rebuild-service-http:
 test-compose-up:
 	cd tests/compose && docker compose up -d
 
-.PHONY: test-run-cmd
+.PHONY: test-run-cmd-collector
+test-run-cmd-collector:
+	export OTEL_EXPORTER_OTLP_ENDPOINT=grpc://localhost:4317 && \
+	export OTEL_EXPORTER_OTLP_INSECURE=true && \
+	export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=dev && \
+	go run cmd/otel-status/otel-status.go -config tests/otel-status-compose/otel-status.yaml
+
+.PHONY: test-run-cmd-uptrace
 test-run-cmd:
 	export OTEL_EXPORTER_OTLP_ENDPOINT=grpc://localhost:14317 && \
 	export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=grpc://localhost:14317 && \
@@ -18,4 +25,4 @@ test-run-cmd:
 	export OTEL_EXPORTER_OTLP_TRACES_HEADERS=UPTRACE-DSN=http://project2_secret_token@localhost:14317/2 && \
 	export OTEL_EXPORTER_OTLP_METRICS_HEADERS=UPTRACE-DSN=http://project2_secret_token@localhost:14317/2 && \
 	export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=dev && \
-	go run cmd/otel-status/otel-status.go -config tests/compose/otel-status.yaml
+	go run cmd/otel-status/otel-status.go -config tests/otel-status-compose/otel-status.yaml
