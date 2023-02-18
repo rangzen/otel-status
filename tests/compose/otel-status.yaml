@@ -5,6 +5,10 @@ states:
       cron: "@12s"
       method: HEAD
       url: http://localhost:8080
+      values:
+        probe.gps.lat: 45
+        probe.gps.lon: 12
+        probe.container: true
     - name: HTTP HEAD on localhost:8081 (slow, JSON)
       description: Always returns 200, but takes 1 second.
       cron: "@30s"

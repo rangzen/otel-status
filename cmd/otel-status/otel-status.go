@@ -82,6 +82,7 @@ func main() {
 			},
 			Method: s.Method,
 			URL:    s.URL,
+			Values: s.Values,
 		}
 		slog.Info("scheduling", "plugin", http.PluginName, "name", stater.Config().Name, "cron", stater.Config().Cron)
 		if stater.Config().IsDuration() {

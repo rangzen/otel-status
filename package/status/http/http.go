@@ -39,6 +39,8 @@ type Config struct {
 	Cron        string `yaml:"cron" default:"@10m"`
 	Method      string `yaml:"method" default:"GET"`
 	URL         string `yaml:"url"`
+	// Values is a map of key/value to add to the spans.
+	Values map[string]string `yaml:"values"`
 }
 
 // HTTP is the main structure to use HTTP status.
@@ -46,6 +48,7 @@ type HTTP struct {
 	SC     status.Config
 	Method string
 	URL    string
+	Values map[string]string
 }
 
 // Config returns the status.Config of the HTTP status.
@@ -59,6 +62,12 @@ func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	ctx := context.Background()
 	start := time.Now()
 
+	// Prepare additional attributes from config.
+	var valuesAttributes []attribute.KeyValue
+	for k, v := range h.Values {
+		valuesAttributes = append(valuesAttributes, attribute.String(k, v))
+	}
+
 	// Create a span.
 	_, span := tracer.Start(ctx, fmt.Sprintf("%s %s", h.Method, h.URL),
 		trace.WithSpanKind(trace.SpanKindClient),
@@ -66,6 +75,7 @@ func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 			attribute.String(status.OtelStatusPluginName, PluginName),
 			semconv.HTTPMethodKey.String(h.Method),
 		),
+		trace.WithAttributes(valuesAttributes...),
 	)
 	// Defers use LIFO, so the defer that ends the span
 	// should be the first defer to then be called last.
