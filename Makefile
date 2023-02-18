@@ -26,3 +26,7 @@ test-run-cmd:
 	export OTEL_EXPORTER_OTLP_METRICS_HEADERS=UPTRACE-DSN=http://project2_secret_token@localhost:14317/2 && \
 	export OTEL_RESOURCE_ATTRIBUTES=deployment.environment=dev && \
 	go run cmd/otel-status/otel-status.go -config tests/otel-status-compose/otel-status.yaml
+
+.PHONY: generate-changelog-dry
+generate-changelog-dry:
+	conventional-changelog -p conventionalcommits -i CHANGELOG.md
