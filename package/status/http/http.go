@@ -143,7 +143,10 @@ func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	if err != nil {
 		return errorHandling(err, "creating HTTP request duration metric", span)
 	}
-	durationMetric.Record(ctx, elapsedTime, attribute.String(otelStatusHTTPName, h.SC.Name))
+	durationMetric.Record(ctx, elapsedTime,
+		attribute.String(otelStatusHTTPName, h.SC.Name),
+		semconv.HTTPURLKey.String(url.String()),
+	)
 
 	// Record the family status as a compromise between the number of metrics and the number of labels in the meter.
 	_, err = meter.Int64ObservableGauge(
