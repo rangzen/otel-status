@@ -5,6 +5,26 @@ receivers:
     protocols:
       grpc:
       http:
+  httpcheck/service-http-8080:
+    endpoint: http://service-http:8080
+    method: GET
+    collection_interval: 12s
+  httpcheck/service-http-8081:
+    endpoint: http://service-http:8081
+    method: GET
+    collection_interval: 30s
+  httpcheck/service-http-8082:
+    endpoint: http://service-http:8082
+    method: GET
+    collection_interval: 1m
+  httpcheck/service-http-8083:
+    endpoint: http://service-http:8083
+    method: GET
+    collection_interval: 1m
+  httpcheck/dontexist:
+    endpoint: https://tralalala-tsouintsouin-les-ptites-boules---aliiiaaaaaa-prt.dev
+    method: GET
+    collection_interval: 5m
 
 exporters:
   otlp/uptrace:
@@ -26,7 +46,7 @@ service:
       processors: [batch]
       exporters: [logging, otlp/uptrace]
     metrics:
-      receivers: [otlp]
+      receivers: [otlp, httpcheck/service-http-8080, httpcheck/service-http-8081, httpcheck/service-http-8082, httpcheck/service-http-8083, httpcheck/dontexist]
       processors: [batch]
       exporters: [logging, otlp/uptrace]
     logs:
