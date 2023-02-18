@@ -149,7 +149,7 @@ func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	)
 
 	// Record the family status as a compromise between the number of metrics and the number of labels in the meter.
-	_, err = meter.Int64ObservableGauge(
+	_, err = meter.Int64ObservableUpDownCounter(
 		otelStatusHTTPStatus,
 		instrument.WithUnit(unit.Dimensionless),
 		instrument.WithDescription("Status of the HTTP request"),
