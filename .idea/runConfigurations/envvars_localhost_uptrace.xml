@@ -1,0 +1,20 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="envvars localhost uptrace" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="otel-status" />
+    <working_directory value="$PROJECT_DIR$" />
+    <parameters value="-config tests/compose/otel-status.yaml" />
+    <envs>
+      <env name="OTEL_EXPORTER_OTLP_ENDPOINT" value="grpc://localhost:14317" />
+      <env name="OTEL_EXPORTER_OTLP_INSECURE" value="true" />
+      <env name="OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" value="grpc://localhost:14317" />
+      <env name="OTEL_EXPORTER_OTLP_METRICS_HEADERS" value="UPTRACE-DSN=http://project2_secret_token@localhost:14317/2" />
+      <env name="OTEL_EXPORTER_OTLP_TRACES_HEADERS" value="UPTRACE-DSN=http://project2_secret_token@localhost:14317/2" />
+      <env name="OTEL_RESOURCE_ATTRIBUTES" value="deployment.environment=dev" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="github.com/rangzen/otel-status/cmd/otel-status" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/otel-status/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
