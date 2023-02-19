@@ -25,9 +25,9 @@ import (
 const PluginName = "http"
 
 const (
-	otelStatusHTTPName     = "otel.status.http.name"
-	otelStatusHTTPDuration = "otel.status.http.duration"
-	otelStatusHTTPStatus   = "otel.status.http.status"
+	otelStatusHTTPName     = "otelstatus.http.name"
+	otelStatusHTTPDuration = "otelstatus.http.duration"
+	otelStatusHTTPStatus   = "otelstatus.http.status"
 )
 
 var httpStatusClass = [5]string{"1xx", "2xx", "3xx", "4xx", "5xx"}

@@ -10,7 +10,7 @@ import (
 
 const (
 	// OtelStatusPluginName is the key for the plugin name.
-	OtelStatusPluginName = "otel.status.plugin.name"
+	OtelStatusPluginName = "otelstatus.plugin.name"
 )
 
 // Stater is the interface that wraps the Config methods.
