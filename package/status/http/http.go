@@ -49,16 +49,18 @@ type HTTP struct {
 	Method string
 	URL    string
 	Values map[string]string
+	// previousClass is the previous state of the HTTP status class metric.
+	previousClass [5]bool
 }
 
 // Config returns the status.Config of the HTTP status.
-func (h HTTP) Config() status.Config {
+func (h *HTTP) Config() status.Config {
 	return h.SC
 }
 
 // State do the traces about the HTTP status.
 // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md
-func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
+func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	ctx := context.Background()
 	start := time.Now()
 
@@ -149,31 +151,35 @@ func (h HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	)
 
 	// Record the family status as a compromise between the number of metrics and the number of labels in the meter.
-	_, err = meter.Int64ObservableUpDownCounter(
+	// We need to keep an internal state to know if the status has changed,
+	// and calculate the value to add to mimic the 0 or 1 values.
+	// We cannot achieve the same behaviour as httpcheck with the current SDK,
+	// there is no Int64Gauge.
+	statusMetric, err := meter.Int64UpDownCounter(
 		otelStatusHTTPStatus,
 		instrument.WithUnit(unit.Dimensionless),
 		instrument.WithDescription("Status of the HTTP request"),
-		instrument.WithInt64Callback(func(_ context.Context, observer instrument.Int64Observer) error {
-			statusClassIndex := (res.StatusCode / 100) - 1
-			for i := 0; i < len(httpStatusClass); i++ {
-				var value int64
-				if i == statusClassIndex {
-					value = 1
-				}
-				observer.Observe(
-					value,
-					attribute.String(otelStatusHTTPName, h.SC.Name),
-					semconv.HTTPURLKey.String(url.String()),
-					semconv.HTTPStatusCodeKey.Int(res.StatusCode),
-					semconv.HTTPMethodKey.String(h.Method),
-					attribute.String("http.status_class", httpStatusClass[i]),
-				)
-			}
-			return nil
-		}),
 	)
 	if err != nil {
 		return errorHandling(err, "creating HTTP request status metric", span)
+	}
+	statusClassIndex := (res.StatusCode / 100) - 1
+	for i := 0; i < len(httpStatusClass); i++ {
+		val := int64(0)
+		switch {
+		case h.previousClass[i] && i != statusClassIndex:
+			val = -1
+		case !h.previousClass[i] && i == statusClassIndex:
+			val = 1
+		}
+		statusMetric.Add(ctx, val,
+			attribute.String(otelStatusHTTPName, h.SC.Name),
+			semconv.HTTPURLKey.String(url.String()),
+			semconv.HTTPStatusCodeKey.Int(res.StatusCode),
+			semconv.HTTPMethodKey.String(h.Method),
+			attribute.String("http.status_class", httpStatusClass[i]))
+
+		h.previousClass[i] = i == statusClassIndex
 	}
 
 	return nil
