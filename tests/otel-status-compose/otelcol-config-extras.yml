@@ -35,6 +35,7 @@ exporters:
     headers:
       uptrace-dsn: "http://project2_secret_token@localhost:14317/2"
   logging:
+#    verbosity: detailed
 
 processors:
   batch:
