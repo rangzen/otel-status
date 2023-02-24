@@ -27,6 +27,7 @@ const PluginName = "http"
 const (
 	otelStatusHTTPName     = "otelstatus.http.name"
 	otelStatusHTTPDuration = "otelstatus.http.duration"
+	otelStatusHTTPError    = "otelstatus.http.error"
 	otelStatusHTTPStatus   = "otelstatus.http.status"
 )
 
@@ -47,7 +48,7 @@ type Config struct {
 type HTTP struct {
 	SC     status.Config
 	Method string
-	URL    string
+	URL    *neturl.URL
 	Values map[string]string
 	// previousClass is the previous state of the HTTP status class metric.
 	previousClass [5]bool
@@ -83,33 +84,28 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	// should be the first defer to then be called last.
 	defer span.End()
 
-	// Parse the URL.
-	url, err := neturl.Parse(h.URL)
-	if err != nil {
-		return errorHandling(err, "parsing url", span)
-	}
 	span.SetAttributes(
-		semconv.HTTPSchemeKey.String(url.Scheme),
-		semconv.HTTPURLKey.String(url.String()),
+		semconv.HTTPSchemeKey.String(h.URL.Scheme),
+		semconv.HTTPURLKey.String(h.URL.String()),
 		// As server
-		semconv.NetHostNameKey.String(url.Hostname()),
-		semconv.NetHostPortKey.String(url.Port()),
+		semconv.NetHostNameKey.String(h.URL.Hostname()),
+		semconv.NetHostPortKey.String(h.URL.Port()),
 		// As client
-		semconv.NetPeerNameKey.String(url.Hostname()),
-		semconv.NetPeerPortKey.String(url.Port()),
+		semconv.NetPeerNameKey.String(h.URL.Hostname()),
+		semconv.NetPeerPortKey.String(h.URL.Port()),
 	)
 
 	// Create the HTTP request.
-	req, err := nethttp.NewRequest(h.Method, url.String(), nethttp.NoBody)
+	req, err := nethttp.NewRequest(h.Method, h.URL.String(), nethttp.NoBody)
 	if err != nil {
-		return errorHandling(err, "creating HTTP request", span)
+		return h.errorHandling(ctx, err, "creating HTTP request", span, meter)
 	}
 
 	// Do the HTTP request.
 	client := &nethttp.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		return errorHandling(err, "doing HTTP client", span)
+		return h.errorHandling(ctx, err, "doing HTTP client", span, meter)
 	}
 	defer func(body io.ReadCloser) {
 		// Close the response body.
@@ -120,7 +116,7 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 		}
 	}(res.Body)
 
-	slog.Info("status", slog.String("plugin", PluginName), slog.String("url", url.String()), slog.String("status", strconv.Itoa(res.StatusCode)))
+	slog.Info("status", slog.String("plugin", PluginName), slog.String("url", h.URL.String()), slog.String("status", strconv.Itoa(res.StatusCode)))
 
 	// Record the status.
 	span.SetAttributes(
@@ -143,11 +139,11 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 		instrument.WithDescription("Duration of the HTTP request"),
 	)
 	if err != nil {
-		return errorHandling(err, "creating HTTP request duration metric", span)
+		return h.errorHandling(ctx, err, "creating HTTP request duration metric", span, meter)
 	}
 	durationMetric.Record(ctx, elapsedTime,
 		attribute.String(otelStatusHTTPName, h.SC.Name),
-		semconv.HTTPURLKey.String(url.String()),
+		semconv.HTTPURLKey.String(h.URL.String()),
 	)
 
 	// Record the family status as a compromise between the number of metrics and the number of labels in the meter.
@@ -161,7 +157,7 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 		instrument.WithDescription("Status of the HTTP request"),
 	)
 	if err != nil {
-		return errorHandling(err, "creating HTTP request status metric", span)
+		return h.errorHandling(ctx, err, "creating HTTP request status metric", span, meter)
 	}
 	statusClassIndex := (res.StatusCode / 100) - 1
 	for i := 0; i < len(httpStatusClass); i++ {
@@ -174,7 +170,7 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 		}
 		statusMetric.Add(ctx, val,
 			attribute.String(otelStatusHTTPName, h.SC.Name),
-			semconv.HTTPURLKey.String(url.String()),
+			semconv.HTTPURLKey.String(h.URL.String()),
 			semconv.HTTPStatusCodeKey.Int(res.StatusCode),
 			semconv.HTTPMethodKey.String(h.Method),
 			attribute.String("http.status_class", httpStatusClass[i]))
@@ -187,10 +183,25 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 
 // errorHandling is a helper function to handle errors.
 // It logs the error, records it in the span and returns it.
-func errorHandling(err error, msg string, span trace.Span) error {
+func (h *HTTP) errorHandling(ctx context.Context, err error, msg string, span trace.Span, meter metric.Meter) error {
 	e := fmt.Errorf("%s: %w", msg, err)
 	slog.Error(msg, e, slog.String("plugin", PluginName))
 	span.RecordError(e)
 	span.SetStatus(codes.Error, e.Error())
+
+	// Record the metric error.
+	errorMetric, err := meter.Int64Counter(
+		otelStatusHTTPError,
+		instrument.WithUnit(unit.Dimensionless),
+		instrument.WithDescription("Error of the HTTP request"),
+	)
+	if err != nil {
+		errorMetric.Add(ctx, 1,
+			attribute.String(otelStatusHTTPName, h.SC.Name),
+			semconv.HTTPURLKey.String(h.URL.String()),
+			attribute.String("error.message", err.Error()),
+		)
+	}
+
 	return e
 }

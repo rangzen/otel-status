@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	neturl "net/url"
 	"os"
 	"strings"
 	"time"
@@ -74,6 +75,13 @@ func main() {
 	var meter = global.MeterProvider().Meter(instrumentName)
 	scheduler := gocron.NewScheduler(time.Local)
 	for _, s := range conf.States.HTTP {
+		// Parse the URL.
+		url, err := neturl.Parse(s.URL)
+		if err != nil {
+			slog.Error("parsing URL", err, "url", s.URL)
+			continue
+		}
+
 		stater := http.HTTP{
 			SC: status.Config{
 				Name:        s.Name,
@@ -81,7 +89,7 @@ func main() {
 				Cron:        s.Cron,
 			},
 			Method: s.Method,
-			URL:    s.URL,
+			URL:    url,
 			Values: s.Values,
 		}
 		slog.Info("scheduling", "plugin", http.PluginName, "name", stater.Config().Name, "cron", stater.Config().Cron)
