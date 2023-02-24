@@ -4,7 +4,6 @@ package http
 import (
 	"context"
 	"fmt"
-	"io"
 	nethttp "net/http"
 	neturl "net/url"
 	"strconv"
@@ -40,7 +39,7 @@ type Config struct {
 	Cron        string `yaml:"cron" default:"@10m"`
 	Method      string `yaml:"method" default:"GET"`
 	URL         string `yaml:"url"`
-	// Values is a map of key/value to add to the spans.
+	// Values is a map of key/value to add to the spans. See recordMetricStatus.
 	Values map[string]string `yaml:"values"`
 }
 
@@ -65,12 +64,47 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 	ctx := context.Background()
 	start := time.Now()
 
-	// Prepare additional attributes from config.
-	var valuesAttributes []attribute.KeyValue
-	for k, v := range h.Values {
-		valuesAttributes = append(valuesAttributes, attribute.String(k, v))
+	span := h.newSpan(ctx, tracer)
+	// defer calls are used as a LIFO, so defer that ends the span
+	// should be the first defer of this function, then it will be called in last.
+	defer span.End()
+
+	// Create the HTTP request.
+	req, err := nethttp.NewRequest(h.Method, h.URL.String(), nethttp.NoBody)
+	if err != nil {
+		return h.errorHandling(ctx, span, meter, err, "creating HTTP request")
 	}
 
+	// Do the HTTP request.
+	client := &nethttp.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return h.errorHandling(ctx, span, meter, err, "doing HTTP client")
+	}
+	defer res.Body.Close()
+
+	elapsedTime := time.Since(start).Milliseconds()
+
+	slog.Info("status",
+		slog.String("plugin", PluginName),
+		slog.String("url", h.URL.String()),
+		slog.String("status", strconv.Itoa(res.StatusCode)),
+		slog.Int64("duration", elapsedTime),
+	)
+
+	recordSpanDuration(span, elapsedTime)
+
+	recordSpanStatus(span, res)
+
+	if err = h.recordMetricDuration(ctx, span, meter, elapsedTime); err != nil {
+		return err
+	}
+
+	return h.recordMetricStatus(ctx, span, meter, err, res)
+}
+
+// newSpan creates a new span for the HTTP request data.
+func (h *HTTP) newSpan(ctx context.Context, tracer trace.Tracer) trace.Span {
 	// Create a span.
 	_, span := tracer.Start(ctx, fmt.Sprintf("%s %s", h.Method, h.URL),
 		trace.WithSpanKind(trace.SpanKindClient),
@@ -78,11 +112,8 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 			attribute.String(status.OtelStatusPluginName, PluginName),
 			semconv.HTTPMethodKey.String(h.Method),
 		),
-		trace.WithAttributes(valuesAttributes...),
+		trace.WithAttributes(h.configAttributes()...),
 	)
-	// Defers use LIFO, so the defer that ends the span
-	// should be the first defer to then be called last.
-	defer span.End()
 
 	span.SetAttributes(
 		semconv.HTTPSchemeKey.String(h.URL.Scheme),
@@ -94,70 +125,66 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 		semconv.NetPeerNameKey.String(h.URL.Hostname()),
 		semconv.NetPeerPortKey.String(h.URL.Port()),
 	)
+	return span
+}
 
-	// Create the HTTP request.
-	req, err := nethttp.NewRequest(h.Method, h.URL.String(), nethttp.NoBody)
-	if err != nil {
-		return h.errorHandling(ctx, err, "creating HTTP request", span, meter)
+// configAttributes returns the attributes from the config.
+func (h *HTTP) configAttributes() []attribute.KeyValue {
+	// Prepare additional attributes from config.
+	var valuesAttributes []attribute.KeyValue
+	for k, v := range h.Values {
+		valuesAttributes = append(valuesAttributes, attribute.String(k, v))
 	}
+	return valuesAttributes
+}
 
-	// Do the HTTP request.
-	client := &nethttp.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return h.errorHandling(ctx, err, "doing HTTP client", span, meter)
-	}
-	defer func(body io.ReadCloser) {
-		// Close the response body.
-		err = body.Close()
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
-	}(res.Body)
+// recordSpanDuration completes the span with the HTTP response duration.
+func recordSpanDuration(span trace.Span, elapsedTime int64) {
+	span.SetAttributes(
+		attribute.Int64("duration", elapsedTime),
+	)
+}
 
-	slog.Info("status", slog.String("plugin", PluginName), slog.String("url", h.URL.String()), slog.String("status", strconv.Itoa(res.StatusCode)))
-
-	// Record the status.
+// recordSpanStatus completes the span with the HTTP response status.
+func recordSpanStatus(span trace.Span, res *nethttp.Response) {
 	span.SetAttributes(
 		semconv.HTTPStatusCodeKey.Int(res.StatusCode),
 	)
 	if res.StatusCode >= 400 {
 		span.SetStatus(codes.Error, fmt.Sprintf("HTTP status code %d", res.StatusCode))
 	}
+}
 
-	// Record the duration.
-	elapsedTime := time.Since(start).Milliseconds()
-	span.SetAttributes(
-		attribute.Int64("duration", elapsedTime),
-	)
-
-	// Record the duration in the meter.
+// recordMetricDuration records the duration of the HTTP request in a metric.
+func (h *HTTP) recordMetricDuration(ctx context.Context, span trace.Span, meter metric.Meter, elapsedTime int64) error {
 	durationMetric, err := meter.Int64Histogram(
 		otelStatusHTTPDuration,
 		instrument.WithUnit(unit.Milliseconds),
 		instrument.WithDescription("Duration of the HTTP request"),
 	)
 	if err != nil {
-		return h.errorHandling(ctx, err, "creating HTTP request duration metric", span, meter)
+		return h.errorHandling(ctx, span, meter, err, "creating HTTP request duration metric")
 	}
 	durationMetric.Record(ctx, elapsedTime,
 		attribute.String(otelStatusHTTPName, h.SC.Name),
 		semconv.HTTPURLKey.String(h.URL.String()),
 	)
+	return nil
+}
 
-	// Record the family status as a compromise between the number of metrics and the number of labels in the meter.
-	// We need to keep an internal state to know if the status has changed,
-	// and calculate the value to add to mimic the 0 or 1 values.
-	// We cannot achieve the same behaviour as httpcheck with the current SDK,
-	// there is no Int64Gauge.
+// recordMetricStatus records the family status as a compromise between the number of metrics and the number of labels in the meter.
+// We need to keep an internal state to know if the status has changed,
+// and calculate the value to add to mimic the 0 or 1 values.
+// We cannot achieve the same behaviour as httpcheck with the current SDK,
+// there is no Int64Gauge.
+func (h *HTTP) recordMetricStatus(ctx context.Context, span trace.Span, meter metric.Meter, err error, res *nethttp.Response) error {
 	statusMetric, err := meter.Int64UpDownCounter(
 		otelStatusHTTPStatus,
 		instrument.WithUnit(unit.Dimensionless),
 		instrument.WithDescription("Status of the HTTP request"),
 	)
 	if err != nil {
-		return h.errorHandling(ctx, err, "creating HTTP request status metric", span, meter)
+		return h.errorHandling(ctx, span, meter, err, "creating HTTP request status metric")
 	}
 	statusClassIndex := (res.StatusCode / 100) - 1
 	for i := 0; i < len(httpStatusClass); i++ {
@@ -177,13 +204,13 @@ func (h *HTTP) State(tracer trace.Tracer, meter metric.Meter) error {
 
 		h.previousClass[i] = i == statusClassIndex
 	}
-
 	return nil
 }
 
 // errorHandling is a helper function to handle errors.
 // It logs the error, records it in the span and returns it.
-func (h *HTTP) errorHandling(ctx context.Context, err error, msg string, span trace.Span, meter metric.Meter) error {
+// It also records the error metric.
+func (h *HTTP) errorHandling(ctx context.Context, span trace.Span, meter metric.Meter, err error, msg string) error {
 	e := fmt.Errorf("%s: %w", msg, err)
 	slog.Error(msg, e, slog.String("plugin", PluginName))
 	span.RecordError(e)
