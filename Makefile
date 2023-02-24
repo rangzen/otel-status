@@ -4,11 +4,11 @@ lint:
 
 .PHONY: test-force-rebuild-service-http
 test-force-rebuild-service-http:
-	cd tests/compose && docker compose build --no-cache service-http
+	cd tests/otel-status-compose && docker compose build --no-cache service-http
 
 .PHONY: test-compose-up
 test-compose-up:
-	cd tests/compose && docker compose up -d
+	cd tests/otel-status-compose && docker compose up -d
 
 .PHONY: test-run-cmd-collector
 test-run-cmd-collector:
