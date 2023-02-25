@@ -5,7 +5,7 @@ that check various endpoints using [Open Telemetry](https://opentelemetry.io/).
 
 These tools allow you to monitor the status of your endpoints in real-time,
 with comprehensive traces and metrics data
-to hepl you understand the performance of your system.
+to help you understand the performance of your system.
 
 See [cmd/otel-status](cmd/otel-status) for an example of a tool that uses this library.
 
