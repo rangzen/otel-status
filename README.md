@@ -9,6 +9,8 @@ to help you understand the performance of your system.
 
 See [cmd/otel-status](cmd/otel-status) for an example of a tool that uses this library.
 
+See [docs](docs) for example of results that you can extract.
+
 <!-- TOC -->
 * [Open Telemetry Status](#open-telemetry-status)
   * [Information](#information)
