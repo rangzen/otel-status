@@ -1,11 +1,5 @@
 # Open Telemetry Status
 
-```
---------------------------------
---- /!\ WORK IN PROGRESS /!\ ---
---------------------------------
-```
-
 `otel-status` is a Go library that allows you to create tools
 that check various endpoints using [Open Telemetry](https://opentelemetry.io/).
 
