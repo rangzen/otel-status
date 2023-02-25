@@ -222,11 +222,11 @@ func (h *HTTP) errorHandling(ctx context.Context, span trace.Span, meter metric.
 		instrument.WithUnit(unit.Dimensionless),
 		instrument.WithDescription("Error of the HTTP request"),
 	)
-	if err != nil {
+	if err == nil {
 		errorMetric.Add(ctx, 1,
 			attribute.String(otelStatusHTTPName, h.SC.Name),
 			semconv.HTTPURLKey.String(h.URL.String()),
-			attribute.String("error.message", err.Error()),
+			attribute.String("error.message", e.Error()),
 		)
 	}
 
