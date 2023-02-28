@@ -32,8 +32,8 @@ services:
           memory: 100M
     command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-config-extras.yml" ]
     volumes:
-      - ./otelcol-config.yml:/etc/otelcol-config.yml
-      - ./otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
+      - ./otelcol/otelcol-config.yml:/etc/otelcol-config.yml
+      - ./otelcol/otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
     ports:
       - "4317:4317"          # OTLP over gRPC receiver
       - "4318:4318"     # OTLP over HTTP receiver
@@ -65,7 +65,7 @@ services:
     container_name: uptrace
     volumes:
       - uptrace_data:/var/lib/uptrace
-      - ./uptrace.yml:/etc/uptrace/uptrace.yml
+      - ./uptrace/uptrace.yml:/etc/uptrace/uptrace.yml
     #environment:
     #  - DEBUG=2
     ports:
