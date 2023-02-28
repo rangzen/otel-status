@@ -69,13 +69,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Prepare connexion to Open Telemetry Traces.
+	// Prepare connection to Open Telemetry Traces.
 	if err = initTracer(); err != nil {
 		slog.Error("initializing tracer", err)
 		os.Exit(1)
 	}
 
-	// Prepare connexion to Open Telemetry Metrics.
+	// Prepare connection to Open Telemetry Metrics.
 	if err = initMeter(); err != nil {
 		slog.Error("initializing meter", err)
 		os.Exit(1)
@@ -126,7 +126,7 @@ func main() {
 	scheduler.StartBlocking()
 }
 
-// initTracer prepares connexion to Open Telemetry Traces.
+// initTracer prepares connection to Open Telemetry Traces.
 // All the configuration is done via environment variables.
 func initTracer() error {
 	exporter, err := otlptrace.New(
@@ -159,7 +159,7 @@ func initTracer() error {
 	return nil
 }
 
-// initMeter prepares connexion to Open Telemetry Metrics.
+// initMeter prepares connection to Open Telemetry Metrics.
 // All the configuration is done via environment variables.
 func initMeter() error {
 	exporter, err := otlpmetricgrpc.New(
