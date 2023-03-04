@@ -1,0 +1,17 @@
+tates:
+  http:
+    - name: Jellyfin
+      description: Jellyfin on localhost.
+      cron: "@1m"
+      method: HEAD
+      url: http://172.17.0.1:8096
+    - name: Privoxy
+      description: Privoxy (haugene) on Smoke.
+      cron: "@1m"
+      method: HEAD
+      url: http://172.17.0.1:8118
+    - name: Google US
+      description: Google USA.
+      cron: "*/5 * * * *"
+      method: HEAD
+      url: https://www.google.com

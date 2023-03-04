@@ -1,0 +1,46 @@
+version: '3.9'
+
+# Declare a network for calling otel-collector from otel-status with the internal DNS.
+networks:
+  default:
+    name: otel-status-network
+    driver: bridge
+
+services:
+
+  # OpenTelemetry Collector, link between otel-status and Uptrace.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+    volumes:
+      # /etc/otelcol-contrib/config.yaml is the default configuration file path inside the container.
+      - '/path/to/otelcol-config.yaml:/etc/otelcol-contrib/config.yaml'
+    ports:
+      # We open only the OTLP over gRPC port.
+      - "4317:4317"
+
+  # otel-status, service to test HTTP requests.
+  otel-status:
+    image: clhomme/otel-status:latest
+    container_name: otel-status
+    environment:
+      # Configuration to use the otel-collector service through environment variables.
+      # We will use OTLP over gRPC, so the grpc protocol will help configuration.
+      # 4317 is the default port for OTLP over gRPC.
+      OTEL_EXPORTER_OTLP_ENDPOINT: grpc://otel-collector:4317
+      # ENDPOINT is actually enough for traces but not for metrics.
+      # It helps to add also the METRICS_ENDPOINT part.
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: grpc://otel-collector:4317
+      # OpenTelemetry Collector is not secured by default in the image, so we need to disable security.
+      # In production, you need to secure your OpenTelemetry Collector, especially the network part.
+      OTEL_EXPORTER_OTLP_INSECURE: 'true'
+      # The deployment.environment attribute is used to filter incoming services in Uptrace.
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=your-server-name
+    volumes:
+      # The otel-status.yaml file is used to configure the otel-status service.
+      # /otel-status.yaml is the path inside the container.
+      - '/path/to/otel-status.yaml:/otel-status.yaml'
