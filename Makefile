@@ -30,3 +30,11 @@ test-run-cmd:
 .PHONY: generate-changelog-dry
 generate-changelog-dry:
 	conventional-changelog -p conventionalcommits -i CHANGELOG.md
+
+.PHONY: generate-container-image-cmd-otel-status
+generate-container-image-cmd-otel-status:
+	docker build -t clhomme/otel-status -f cmd/otel-status/Dockerfile .
+
+.PHONY: push-container-image-cmd-otel-status
+push-container-image-cmd-otel-status:
+	docker push clhomme/otel-status
